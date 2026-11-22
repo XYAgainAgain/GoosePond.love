@@ -1,0 +1,488 @@
+.lightbox-overlay {
+  --lightbox-scrim: rgb(10 7 5 / 0.96);
+  --lightbox-text: var(--text);
+  --lightbox-muted: var(--muted);
+  --lightbox-accent: var(--accent);
+  --lightbox-control: var(--control);
+  --lightbox-control-hover: var(--control-hover);
+  --lightbox-control-line: var(--control-line);
+  --lightbox-control-size: max(var(--tap), 46px);
+  /* Keep it a whole multiple of 36, so one viewBox unit stays one device pixel and the × stays sharp */
+  --lightbox-corner-icon: 36px;
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color-scheme: dark;
+  background: var(--lightbox-scrim);
+  color: var(--lightbox-text);
+  font-family: var(--font-body);
+  line-height: 1.5;
+  overscroll-behavior: contain;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.25s var(--ease-out), visibility 0.25s;
+}
+
+/* The backdrop is near-black in every theme, so the light theme's dark ink swaps for ember's tones */
+html[data-theme="light"] .lightbox-overlay {
+  --lightbox-text: #f0e7e2;
+  --lightbox-muted: #c0b1a8;
+  --lightbox-accent: #ff9d5c;
+  --lightbox-control: #322822;
+  --lightbox-control-hover: #3c322c;
+  --lightbox-control-line: #837871;
+}
+
+html[data-theme="blackout"] .lightbox-overlay {
+  --lightbox-scrim: #000;
+}
+
+.lightbox-overlay.active {
+  opacity: 1;
+  visibility: visible;
+
+  @starting-style {
+    opacity: 0;
+  }
+}
+
+body.lightbox-open {
+  overflow: hidden;
+}
+
+.lightbox-overlay :focus-visible {
+  outline: 2px solid var(--lightbox-accent);
+  outline-offset: 2px;
+}
+
+.lightbox-sr-only {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.lightbox-container {
+  display: flex;
+  flex-direction: column;
+  inline-size: calc(100vw - 140px);
+  block-size: 100vh;
+  block-size: 100dvh;
+  padding-block: 1rem;
+}
+
+.lightbox-image-frame {
+  position: relative;
+  flex: 1;
+  min-block-size: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.lightbox-image-wrapper {
+  position: relative;
+  flex: 1;
+  min-block-size: 0;
+  min-inline-size: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: clip;
+  overscroll-behavior: contain;
+  touch-action: none; /* the pinch, swipe, and double-tap code owns touch here */
+}
+
+.lightbox-image {
+  display: block;
+  max-inline-size: 100%;
+  max-block-size: 100%;
+  inline-size: auto;
+  block-size: auto;
+  object-fit: contain;
+  border-radius: var(--radius);
+  box-shadow: 0 10px 18px -8px rgb(0 0 0 / 0.7), 0 2px 4px rgb(0 0 0 / 0.3);
+  user-select: none;
+  -webkit-user-drag: none;
+  transition: opacity 120ms ease;
+}
+
+.lightbox-image.is-pending {
+  opacity: 0;
+}
+
+/* Auto margins, not align-items: center, which leaves the overflow of a larger image unreachable */
+.lightbox-overlay.zoomed .lightbox-image-wrapper {
+  align-items: flex-start;
+  justify-content: flex-start;
+  overflow: auto;
+  cursor: grab;
+  scrollbar-width: thin;
+  touch-action: pan-x pan-y; /* one finger scrolls natively, two stay with the pinch */
+}
+
+.lightbox-overlay.zoomed .lightbox-image-wrapper.dragging {
+  cursor: grabbing;
+}
+
+.lightbox-overlay.zooming .lightbox-image {
+  will-change: transform;
+}
+
+/* A live transform grows the scrollable overflow and can pop a scrollbar mid-zoom */
+.lightbox-overlay.zoom-clip .lightbox-image-wrapper {
+  overflow: hidden;
+}
+
+.lightbox-overlay.zoomed .lightbox-image {
+  max-inline-size: none;
+  max-block-size: none;
+  block-size: auto;
+  flex-shrink: 0;
+  margin: auto;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.lightbox-notice {
+  position: absolute;
+  inset-block-end: 4.5rem;
+  inset-inline-start: 50%;
+  translate: -50% 0;
+  inline-size: max-content;
+  max-inline-size: min(36rem, calc(100% - 2rem));
+  padding: 0.75rem 1rem;
+  background: rgb(from var(--lightbox-scrim) r g b / 0.92);
+  border: 1px solid rgb(from var(--lightbox-accent) r g b / 0.6);
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  text-align: center;
+  z-index: 3;
+}
+
+.lightbox-notice[hidden] {
+  display: none;
+}
+
+.lightbox-retry {
+  min-block-size: var(--tap);
+  margin-inline-start: 0.5rem;
+  padding-inline: 0.75rem;
+  background: transparent;
+  color: var(--lightbox-accent);
+  border: 1px solid rgb(from var(--lightbox-accent) r g b / 0.6);
+  border-radius: var(--radius);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+
+  &:hover,
+  &:focus-visible {
+    background: rgb(from var(--lightbox-accent) r g b / 0.15);
+  }
+}
+
+/* Reversed so the controls stay the bottom line however the hint wraps */
+.lightbox-frame-footer {
+  display: flex;
+  flex-wrap: wrap-reverse;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 0.75rem;
+  padding-block-start: 0.5rem;
+}
+
+.lightbox-zoom-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  opacity: 0.85;
+  transition: opacity 0.15s ease;
+}
+
+.lightbox-image-frame:hover .lightbox-zoom-controls,
+.lightbox-zoom-controls:focus-within {
+  opacity: 1;
+}
+
+.lightbox-rocker {
+  display: flex;
+  align-items: stretch;
+  flex-shrink: 0;
+  block-size: var(--lightbox-control-size);
+  border: 1px solid var(--lightbox-control-line);
+  border-radius: calc(var(--lightbox-control-size) / 2);
+  overflow: hidden;
+}
+
+.lightbox-rocker-btn {
+  display: grid;
+  place-items: center;
+  min-inline-size: var(--tap);
+  padding: 0;
+  background: var(--lightbox-control);
+  color: var(--lightbox-text);
+  border: 0;
+  cursor: pointer;
+  transition: background 0.15s ease;
+
+  & > svg {
+    inline-size: 16px;
+    block-size: 16px;
+  }
+
+  &:hover {
+    background: var(--lightbox-control-hover);
+  }
+
+  /* Inset so the ring stays inside the group's overflow clip */
+  &:focus-visible {
+    outline-offset: -2px;
+  }
+
+  /* The end segments carry the pill's radius, so a focus ring follows the curve */
+  &:first-child {
+    border-start-start-radius: calc(var(--lightbox-control-size) / 2);
+    border-end-start-radius: calc(var(--lightbox-control-size) / 2);
+  }
+
+  &:last-child {
+    border-start-end-radius: calc(var(--lightbox-control-size) / 2);
+    border-end-end-radius: calc(var(--lightbox-control-size) / 2);
+  }
+}
+
+/* Fixed to the widest level the code prints ("9.9× (1:1)"), so the rocker never resizes mid-zoom */
+.lightbox-rocker-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 8.6ch;
+  background: rgb(from var(--lightbox-control) r g b / 0.5);
+  border-inline: 1px solid var(--lightbox-control-line);
+  font-size: 0.85rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Reset keeps its slot at fit, so nothing slides when a zoom begins; [hidden] would be display: none */
+.lightbox-zoom-fit {
+  block-size: var(--lightbox-control-size);
+  padding-inline: 1rem;
+  background: var(--lightbox-control);
+  color: var(--lightbox-text);
+  border: 1px solid var(--lightbox-control-line);
+  border-radius: calc(var(--lightbox-control-size) / 2);
+  font: inherit;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  visibility: hidden;
+  pointer-events: none;
+  transition: background 0.15s ease;
+
+  &:hover,
+  &:focus-visible {
+    background: var(--lightbox-control-hover);
+  }
+}
+
+.lightbox-overlay.zoomed .lightbox-zoom-fit {
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.lightbox-hint {
+  flex: 1 1 12rem;
+  margin: 0;
+  color: var(--lightbox-muted);
+  font-size: 0.9rem;
+  text-align: end;
+  text-wrap: pretty;
+}
+
+.lightbox-hint-nav[hidden] {
+  display: none;
+}
+
+.lightbox-caption {
+  padding-block-start: 0.75rem;
+  text-align: center;
+}
+
+.lightbox-title {
+  margin: 0;
+  font-size: 1.25rem;
+  line-height: 1.3;
+  text-wrap: balance;
+}
+
+.lightbox-detail {
+  margin: 0.25rem 0 0;
+  color: var(--lightbox-muted);
+  font-size: 0.95rem;
+  text-wrap: pretty;
+}
+
+.lightbox-counter {
+  margin: 0.25rem 0 0;
+  color: var(--lightbox-muted);
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.lightbox-detail[hidden],
+.lightbox-counter[hidden] {
+  display: none;
+}
+
+.lightbox-close {
+  position: absolute;
+  inset-block-start: 12px;
+  inset-inline-end: 12px;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: var(--tap);
+  block-size: var(--tap);
+  padding: 0;
+  background: none;
+  color: var(--lightbox-text);
+  border: 0;
+  opacity: 0.75;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+
+  &:hover,
+  &:focus-visible {
+    opacity: 1;
+  }
+}
+
+.lightbox-close-icon {
+  flex-shrink: 0;
+  inline-size: var(--lightbox-corner-icon);
+  block-size: var(--lightbox-corner-icon);
+}
+
+.lightbox-nav {
+  position: absolute;
+  inset-block-start: 50%;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 48px;
+  block-size: 48px;
+  padding: 0;
+  translate: 0 -50%;
+  background: rgb(from var(--lightbox-scrim) r g b / 0.6);
+  color: var(--lightbox-text);
+  border: 0;
+  border-radius: 50%;
+  opacity: 0.75;
+  cursor: pointer;
+  transition: opacity 0.15s ease, background 0.15s ease;
+
+  & > svg {
+    inline-size: 24px;
+    block-size: 24px;
+  }
+
+  &:hover,
+  &:focus-visible {
+    opacity: 1;
+    background: rgb(from var(--lightbox-scrim) r g b / 0.9);
+  }
+
+  &[hidden] {
+    display: none;
+  }
+
+  /* Disabled, not hidden, so the layout never shifts */
+  &:disabled {
+    opacity: 0.15;
+    cursor: default;
+    pointer-events: none;
+  }
+}
+
+.lightbox-prev {
+  inset-inline-start: 12px;
+}
+
+.lightbox-next {
+  inset-inline-end: 12px;
+}
+
+@media (max-width: 768px) {
+  .lightbox-container {
+    inline-size: 100vw;
+    padding-inline: 0.5rem;
+  }
+
+  .lightbox-frame-footer {
+    justify-content: center;
+  }
+
+  .lightbox-hint {
+    flex-basis: 100%;
+    text-align: center;
+  }
+
+  .lightbox-prev {
+    inset-inline-start: 6px;
+  }
+
+  .lightbox-next {
+    inset-inline-end: 6px;
+  }
+
+  .lightbox-close {
+    inset-block-start: 6px;
+    inset-inline-end: 6px;
+  }
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .lightbox-hint {
+    display: none;
+  }
+}
+
+@media (hover: none) and (pointer: coarse) and ((width <= 768px) or (height <= 500px)) {
+  .lightbox-frame-footer {
+    display: none;
+  }
+}
+
+/* Tablets keep the rocker; double-tap covers what Reset does */
+@media (hover: none) and (pointer: coarse) and (width > 768px) and (height > 500px) {
+  .lightbox-frame-footer {
+    justify-content: center;
+  }
+
+  .lightbox-zoom-fit {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lightbox-overlay,
+  .lightbox-overlay * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

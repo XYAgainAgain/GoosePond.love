@@ -1,0 +1,37 @@
+:root {
+  --press-scale: 0.86;
+  --press-duration: 120ms;
+}
+
+@keyframes press-bounce {
+  50% {
+    scale: var(--press-scale);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .press-bounce {
+    animation: press-bounce var(--press-duration) ease;
+  }
+
+  /* Segments of a rounded, clipped group are square, so the glyph shrinks or a corner shows */
+  [data-press="glyph"].press-bounce {
+    animation: none;
+
+    & > * {
+      animation: press-bounce var(--press-duration) ease;
+    }
+  }
+}
+
+/* Not display: none, because an unrendered switch does not play the iOS tick */
+.haptic-switch {
+  position: fixed;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  inline-size: 1px;
+  block-size: 1px;
+  margin: 0;
+  opacity: 0;
+  pointer-events: none;
+}

@@ -1,0 +1,361 @@
+/* The tray, theme pill, and rocker are px, not rem: they rescale the page and must not move under the
+   pointer while they do. Hover rules out-rank the global button hover in styles.css */
+:root {
+  --settings-gear-size: var(--tap);
+  --settings-gear-icon: 20px;
+  --settings-tray-control: 46px;
+  --settings-tray-pad: 6px;
+  --settings-tray-gap: 8px;
+  --settings-tray-gutter: 16px;
+  --settings-tray-shadow: 0 10px 30px rgb(0 0 0 / 0.45);
+  --theme-pill-size: 46px;
+  --rocker-size: 46px;
+  --control-ease: 0.2s ease;
+}
+
+/* Text size ladder: the root font size, so every rem follows. Mirrors SIZES in settings.ts */
+html[data-text-size="xsmall"] {
+  font-size: 84%;
+}
+
+html[data-text-size="small"] {
+  font-size: 91%;
+}
+
+html:not([data-text-size]),
+html[data-text-size="medium"] {
+  font-size: 100%;
+}
+
+html[data-text-size="large"] {
+  font-size: 114%;
+}
+
+html[data-text-size="xlarge"] {
+  font-size: 127%;
+}
+
+/* Reading faces repoint the body token only; Gaegu headings and the controls' UI face stay */
+html[data-font="figtree"] {
+  --font-body: "Figtree Variable", system-ui, sans-serif;
+}
+
+/* Gear */
+.settings-gear {
+  display: grid;
+  place-items: center;
+  inline-size: var(--settings-gear-size);
+  block-size: var(--settings-gear-size);
+  min-height: 0;
+  flex-shrink: 0;
+  margin: 0 0 0 auto;
+  padding: 0;
+  border: 2px solid color-mix(in oklab, var(--text) 30%, transparent);
+  border-radius: 50%;
+  background: color-mix(in oklab, var(--text) 10%, transparent);
+  color: var(--text);
+  anchor-name: --settings-tray-gear;
+
+  /* Whole px: a percentage renders fractional and softens the strokes */
+  & svg {
+    inline-size: var(--settings-gear-icon);
+    block-size: var(--settings-gear-icon);
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+}
+
+.bar .settings-gear:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--text) 20%, transparent);
+}
+
+.bar .settings-gear:active:not(:disabled) {
+  background: color-mix(in oklab, var(--text) 30%, transparent);
+}
+
+/* Tray. No display here: the UA [popover] rule owns it, and an author display would beat the hidden
+   state. The fixed inset is the no-anchor fallback, fed by the script's measurements */
+.settings-tray {
+  position: fixed;
+  inset: auto;
+  inset-block-start: calc(var(--settings-tray-top, 72px) + var(--settings-tray-gap));
+  inset-inline-end: var(--settings-tray-end, var(--settings-tray-gutter));
+  margin: 0;
+  padding: var(--settings-tray-pad);
+  row-gap: var(--settings-tray-pad);
+  justify-items: end;
+  border: 1px solid var(--control-line);
+  border-radius: calc(var(--settings-tray-control) / 2 + var(--settings-tray-pad));
+  background: var(--panel);
+  box-shadow: var(--settings-tray-shadow);
+  color: var(--text);
+  font-family: var(--font-ui);
+  opacity: 0;
+  scale: 0.94;
+  transition: opacity 0.18s ease, scale 0.18s ease, overlay 0.18s allow-discrete,
+    display 0.18s allow-discrete;
+}
+
+.settings-tray:popover-open {
+  display: grid;
+  opacity: 1;
+  scale: 1;
+}
+
+@starting-style {
+  .settings-tray:popover-open {
+    opacity: 0;
+    scale: 0.94;
+  }
+}
+
+.settings-tray__row {
+  inline-size: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.settings-inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+/* Block axis off the bar, so the tray clears a tall bar's second row; inline axis off the gear */
+@supports (position-anchor: --a) {
+  .settings-tray {
+    position-anchor: --settings-tray-gear;
+    position-area: none;
+    inset: auto;
+    inset-block-start: calc(
+      anchor(--settings-tray-bar bottom, var(--settings-tray-top, 72px)) + var(--settings-tray-gap)
+    );
+    inset-inline-end: anchor(--settings-tray-gear right, var(--settings-tray-gutter));
+    position-try-fallbacks: flip-inline;
+    margin: 0;
+  }
+}
+
+/* Phones: centered under the bar */
+@media (width < 600px) {
+  .settings-tray {
+    position-anchor: none;
+    inset-inline: 0;
+    inline-size: fit-content;
+    margin-inline: auto;
+  }
+}
+
+/* Theme pill */
+.theme-pill {
+  --_line: color-mix(in oklab, var(--text) 25%, transparent);
+  display: flex;
+  align-items: stretch;
+  block-size: var(--theme-pill-size);
+  border: 1px solid var(--_line);
+  border-radius: calc(var(--theme-pill-size) / 2);
+  overflow: hidden;
+  flex-shrink: 0;
+  color: var(--text);
+}
+
+.theme-pill__btn {
+  display: grid;
+  grid-auto-flow: column;
+  place-items: center;
+  justify-content: center;
+  gap: 6px;
+  inline-size: var(--theme-pill-seg, 104px);
+  min-inline-size: 44px;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: color-mix(in oklab, var(--text) 6%, transparent);
+  font-family: var(--font-ui);
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+
+  & + & {
+    border-inline-start: 1px solid var(--_line);
+  }
+
+  /* Inset so the ring stays inside the pill's overflow clip */
+  &:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+  }
+
+  /* The end segments carry the pill's radius, so a focus ring follows the curve */
+  &:first-child {
+    border-start-start-radius: calc(var(--theme-pill-size) / 2);
+    border-end-start-radius: calc(var(--theme-pill-size) / 2);
+  }
+
+  &:last-child {
+    border-start-end-radius: calc(var(--theme-pill-size) / 2);
+    border-end-end-radius: calc(var(--theme-pill-size) / 2);
+  }
+}
+
+.theme-pill .theme-pill__btn:hover:not([aria-pressed="true"]) {
+  background: color-mix(in oklab, var(--text) 14%, transparent);
+}
+
+.theme-pill .theme-pill__btn:active:not([aria-pressed="true"]) {
+  background: color-mix(in oklab, var(--text) 22%, transparent);
+}
+
+.theme-pill .theme-pill__btn[aria-pressed="true"] {
+  background: color-mix(in oklab, var(--text) 20%, transparent);
+  border-color: var(--_line);
+}
+
+.theme-pill__icon {
+  display: grid;
+  place-items: center;
+
+  & svg {
+    inline-size: 18px;
+    block-size: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+}
+
+@media (width < 400px) {
+  .theme-pill__text {
+    display: none;
+  }
+
+  .theme-pill__btn {
+    inline-size: 56px;
+  }
+}
+
+/* Forced colors drop the tints, so the pressed segment needs a system color */
+@media (forced-colors: active) {
+  .theme-pill .theme-pill__btn[aria-pressed="true"] {
+    forced-color-adjust: none;
+    background: Highlight;
+    color: HighlightText;
+  }
+}
+
+/* Text rocker */
+.rocker {
+  --_line: color-mix(in oklab, var(--text) 25%, transparent);
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  block-size: var(--rocker-size);
+  border: 1px solid var(--_line);
+  border-radius: calc(var(--rocker-size) / 2);
+  overflow: hidden;
+  flex-shrink: 0;
+  color: var(--text);
+}
+
+.rocker__btn,
+.rocker__label {
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  font-family: var(--font-ui);
+  font-weight: 700;
+  line-height: 1;
+
+  /* Inset so the ring stays inside the group's overflow clip */
+  &:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+  }
+}
+
+.rocker__btn {
+  display: grid;
+  place-items: center;
+  min-inline-size: 44px;
+  background: color-mix(in oklab, var(--text) 6%, transparent);
+  font-size: 1rem;
+
+  /* Inline SVG steppers, so centering never depends on a font's baseline */
+  & > svg {
+    inline-size: 16px;
+    block-size: 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.5;
+    stroke-linecap: round;
+  }
+}
+
+.rocker__label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-inline-size: 36px;
+  border-inline: 1px solid var(--_line);
+  background: color-mix(in oklab, var(--text) 2%, transparent);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.rocker__btn--face {
+  border-inline-end: 1px solid var(--_line);
+}
+
+.rocker .rocker__btn:hover:not(:disabled),
+.rocker .rocker__label:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--text) 14%, transparent);
+}
+
+.rocker .rocker__btn:active:not(:disabled),
+.rocker .rocker__label:active:not(:disabled) {
+  background: color-mix(in oklab, var(--text) 22%, transparent);
+}
+
+.rocker__btn:disabled {
+  opacity: 0.4;
+}
+
+.rocker > button:first-of-type {
+  border-start-start-radius: calc(var(--rocker-size) / 2);
+  border-end-start-radius: calc(var(--rocker-size) / 2);
+}
+
+.rocker > button:last-of-type {
+  border-start-end-radius: calc(var(--rocker-size) / 2);
+  border-end-end-radius: calc(var(--rocker-size) / 2);
+}
+
+.rocker__live {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .settings-tray {
+    transition: none;
+  }
+}
