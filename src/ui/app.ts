@@ -30,7 +30,14 @@ import { type EditActions, renderFilePanel, renderPersonForm, renderRelatives } 
 import { renderLayers } from "./legend.ts";
 import { interestHolders, renderPlace } from "./place.ts";
 import { createSearch } from "./search.ts";
-import { createSettings, currentTheme, labelText, type LookChange } from "./settings.ts";
+import { showSplash } from "./splash.ts";
+import {
+  createSettings,
+  currentTheme,
+  labelText,
+  type LookChange,
+  underSplash,
+} from "./settings.ts";
 import { createSheet } from "./sheet.ts";
 import { mapColors } from "./themes.ts";
 
@@ -255,7 +262,14 @@ export async function startApp(root: HTMLElement) {
   phone.addEventListener("change", () => {
     if (more.matches(":popover-open")) more.hidePopover();
   });
-  bar.append(createSettings({ bar, scroller: () => panelEl, changed: lookChanged }));
+  bar.append(
+    createSettings({
+      bar,
+      scroller: () => panelEl,
+      changed: lookChanged,
+      pond: () => showSplash(root),
+    }),
+  );
   pressFeedback(root);
   const mapWrap = h("div", { class: "map-wrap" }, mapEl);
   const stage = h("main", { class: "stage" }, mapWrap, notice, panelEl);
@@ -931,7 +945,7 @@ export async function startApp(root: HTMLElement) {
   addEventListener("keydown", (e) => {
     const typing = e.target instanceof HTMLInputElement ||
       e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement;
-    if (typing) return;
+    if (typing || underSplash()) return;
     if (e.key === "Escape") {
       if (pairing) cancelPairing();
       else if (trail) clearTrail();

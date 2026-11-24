@@ -80,8 +80,14 @@ function isTyping(e: KeyboardEvent): boolean {
     (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName ?? ""));
 }
 
+let splashOpen = false;
+/* True while the splash covers the map */
+export const underSplash = () => splashOpen;
+
 function oneKey(e: KeyboardEvent): string | null {
-  if (e.ctrlKey || e.metaKey || e.altKey || typeof e.key !== "string" || isTyping(e)) return null;
+  if (
+    splashOpen || e.ctrlKey || e.metaKey || e.altKey || typeof e.key !== "string" || isTyping(e)
+  ) return null;
   return root().dataset.shortcuts === "off" ? null : e.key.toLowerCase();
 }
 
@@ -331,19 +337,42 @@ export interface SettingsOptions {
   /* Its reading position survives a text-size change */
   scroller: () => HTMLElement | null;
   changed: (what: LookChange) => void;
+  /* Reopens the splash; resolves when the visitor goes back in */
+  pond: () => Promise<void>;
+}
+
+function pondButton(signal: AbortSignal, open: () => void) {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "settings-tray__pond";
+  btn.textContent = COPY.settings.pond;
+  btn.addEventListener("click", open, { signal });
+  return btn;
 }
 
 /* Returns the gear for the bar, or the controls themselves without the Popover API */
-export function createSettings({ bar, scroller, changed }: SettingsOptions): HTMLElement {
+export function createSettings({ bar, scroller, changed, pond }: SettingsOptions): HTMLElement {
   const controller = new AbortController();
   const signal = controller.signal;
   const pill = themePill(signal, changed);
   const rocker = textRocker(signal, scroller, changed);
+  async function visitPond() {
+    splashOpen = true;
+    try {
+      await pond();
+    } finally {
+      splashOpen = false;
+    }
+  }
 
   if (!Object.hasOwn(HTMLElement.prototype, "popover")) {
     const inline = document.createElement("div");
     inline.className = "settings-inline";
-    inline.append(pill, rocker);
+    const visit = pondButton(signal, async () => {
+      await visitPond();
+      visit.focus();
+    });
+    inline.append(pill, rocker, visit);
     return inline;
   }
 
@@ -353,9 +382,16 @@ export function createSettings({ bar, scroller, changed }: SettingsOptions): HTM
   tray.popover = "auto";
   tray.setAttribute("role", "group");
   tray.setAttribute("aria-label", COPY.settings.tray);
+  // The tray sits in the top layer, so it closes before the splash covers the page.
+  const visit = pondButton(signal, async () => {
+    tray.hidePopover();
+    await visitPond();
+    gear.focus();
+  });
   tray.append(
     row(pill),
     row(rocker),
+    row(visit),
   );
   document.body.append(tray);
   pressFeedback(tray, signal);

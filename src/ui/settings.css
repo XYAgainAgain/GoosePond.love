@@ -120,6 +120,10 @@ html[data-font="figtree"] {
   gap: 12px;
 }
 
+.settings-tray__pond {
+  inline-size: 100%;
+}
+
 .settings-inline {
   display: flex;
   flex-wrap: wrap;

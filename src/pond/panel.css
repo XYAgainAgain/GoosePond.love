@@ -1,0 +1,257 @@
+.pond-panel {
+  position: fixed;
+  inset-block-start: 8px;
+  inset-inline-start: 8px;
+  z-index: 3;
+  box-sizing: border-box;
+  inline-size: 360px;
+  max-inline-size: calc(100vw - 16px);
+  background: rgb(10 14 20 / 0.86);
+  border: 1px solid #2a3442;
+  border-radius: 8px;
+  color: #d8dee6;
+  font: 14px/1.35 "National Park", system-ui, sans-serif;
+  text-align: start;
+
+  & summary {
+    min-block-size: 44px;
+    padding: 0 96px 0 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+  }
+
+  & summary span {
+    font: 700 19px/1 Gaegu, "Comic Sans MS", cursive;
+  }
+
+  & .pp-fps {
+    margin-inline-start: auto;
+    color: #9aa7b6;
+    font-size: 12.5px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  &:not([open]) {
+    inline-size: auto;
+    background: none;
+    border-color: transparent;
+
+    & summary {
+      inline-size: 44px;
+      padding: 0;
+      justify-content: center;
+      opacity: 0.35;
+
+      &:is(:hover, :focus-visible) {
+        opacity: 0.9;
+      }
+    }
+
+    & summary span {
+      position: absolute;
+      inline-size: 1px;
+      block-size: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+    }
+
+    & .pp-fps {
+      display: none;
+    }
+  }
+
+  & svg {
+    inline-size: 18px;
+    block-size: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  & :is(.pp-reset, .pp-fullscreen) {
+    position: absolute;
+    inset-block-start: 0;
+    inset-inline-end: 0;
+    inline-size: 44px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    background: none;
+    border: 0;
+    cursor: pointer;
+    opacity: 0.7;
+
+    &:is(:hover, :focus-visible) {
+      opacity: 1;
+    }
+  }
+
+  & .pp-fullscreen {
+    inset-inline-end: 44px;
+  }
+
+  & .pp-fullscreen[aria-pressed="true"] .pp-enter,
+  & .pp-fullscreen:not([aria-pressed="true"]) .pp-leave {
+    display: none;
+  }
+
+  & .pp-controls {
+    display: flex;
+    flex-direction: column;
+    max-block-size: max(0px, calc(100dvh - 62px));
+    overflow-y: auto;
+  }
+
+  & .pp-grid {
+    display: grid;
+    grid-template-columns: 8.2em minmax(0, 1fr) 6ch;
+    gap: 4px 8px;
+    align-items: center;
+    padding: 0 12px 8px;
+
+    &[hidden] {
+      display: none;
+    }
+  }
+
+  & :is(.pp-clock-strip, .pp-tabs) {
+    flex: none;
+  }
+
+  & .pp-controls .pp-tabs {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 3px;
+    padding: 0 12px 4px;
+
+    & button[role="tab"] {
+      grid-column: auto;
+      padding-inline: 0;
+      font-size: 12px;
+    }
+
+    & button[role="tab"][aria-selected="true"] {
+      border-color: #7fb0d8;
+    }
+  }
+
+  & .pp-panes {
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+    padding-block: 4px;
+  }
+
+  & label {
+    font-size: 13px;
+  }
+
+  & #pp-time {
+    grid-column: 2 / 4;
+  }
+
+  & output {
+    text-align: end;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  & :is(input, select, button) {
+    min-inline-size: 0;
+    font: inherit;
+    color: inherit;
+    accent-color: #7fb0d8;
+  }
+
+  & :is(button, select, input:is([type="checkbox"], [type="date"], [type="number"])) {
+    box-sizing: border-box;
+    min-block-size: 44px;
+  }
+
+  & input[type="range"] {
+    inline-size: 100%;
+    min-block-size: 44px;
+    margin: 0;
+  }
+
+  & label.pp-tap {
+    min-block-size: 44px;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+  }
+
+  & input[type="checkbox"] {
+    grid-column: 2 / 4;
+    justify-self: start;
+    inline-size: 22px;
+    block-size: 22px;
+    min-block-size: 0;
+    margin: 11px 0;
+  }
+
+  & .pp-controls :is(input:is([type="date"], [type="number"]), select, button) {
+    grid-column: 2 / 4;
+    background: #151c26;
+    border: 1px solid #2a3442;
+    border-radius: 6px;
+    padding: 0 10px;
+  }
+
+  & :focus-visible {
+    outline: 2px solid #9cc8ee;
+    outline-offset: 2px;
+  }
+
+  & h3 {
+    grid-column: 1 / 4;
+    margin: 6px 0 0;
+    padding-block-start: 8px;
+    border-block-start: 1px solid #2a3442;
+    font: 700 17px/1.2 Gaegu, "Comic Sans MS", cursive;
+    color: #b8c7d6;
+
+    &:first-child {
+      margin-block-start: 0;
+      padding-block-start: 0;
+      border-block-start: 0;
+    }
+  }
+
+  & .pp-controls .pp-row {
+    grid-column: 1 / 4;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+
+    & button {
+      grid-column: auto;
+    }
+  }
+
+  & .pp-note {
+    grid-column: 1 / 4;
+    margin: 0;
+    color: #9aa7b6;
+    font-variant-numeric: tabular-nums;
+
+    &:empty {
+      display: none;
+    }
+  }
+
+  & #pp-live-credit a {
+    color: inherit;
+  }
+
+  & #pp-readout {
+    margin-block-start: 6px;
+  }
+
+  & #pp-debug {
+    white-space: pre-line;
+  }
+}
