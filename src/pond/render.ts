@@ -869,6 +869,7 @@ interface SceneBuild {
   glow: boolean;
 }
 const FULL: SceneBuild = { rain: true, optics: true, glow: true };
+const LEAN: SceneBuild = { rain: false, optics: false, glow: false };
 const sceneSource = (pass: ScenePass, b = FULL) =>
   SCENE_HEAD.replace("SCENE_BUILD", `RAIN=${b.rain}, OPTICS=${b.optics}, GLOW=${b.glow}`) +
   SCENE_MAINS[pass];
@@ -1103,6 +1104,8 @@ export class PondRenderer {
   private warming: Program | undefined;
   private warmed = false;
   private warmFailed = false;
+  /** Keys whose warm-up failed to link; asking for one again gets the lean build. */
+  private readonly failed = new Set<string>();
   private frames = 0;
   /** Float targets let the scene run as separate passes; without them it compiles as one program. */
   private passes: boolean;
@@ -1219,12 +1222,14 @@ export class PondRenderer {
 
   private cloudProgram(storms: boolean) {
     if (this.fullFirst) storms = true;
+    if (this.failed.has(`cloud ${storms}`)) storms = false;
     return this.programs.get(`cloud ${storms}`) ?? this.programs.get("cloud true") ??
       this.program(`cloud ${storms}`, () => withStorms(CLOUD_FRAG, storms));
   }
 
   private shadowProgram(storms: boolean) {
     if (this.fullFirst) storms = true;
+    if (this.failed.has(`shadow ${storms}`)) storms = false;
     return this.programs.get(`shadow ${storms}`) ?? this.programs.get("shadow true") ??
       this.program(
         `shadow ${storms}`,
@@ -1239,6 +1244,7 @@ export class PondRenderer {
     if (pass === "sample") b = { ...b, rain: false };
     if (pass === "composite") b = { ...b, optics: false, glow: false };
     const key = (build: SceneBuild) => `${pass} ${build.rain} ${build.optics} ${build.glow}`;
+    if (this.failed.has(key(b))) b = LEAN;
     const full = pass === "sample"
       ? { ...FULL, rain: false }
       : pass === "composite"
@@ -1261,17 +1267,25 @@ export class PondRenderer {
   private warmAll() {
     for (const build of this.warmBuilds()) {
       const program = build();
-      try {
-        program.check();
-      } catch {
-        // An effect off screen mustn't stop the painting: drop the build, keep the lean variants.
-        for (const [key, p] of this.programs) if (p === program) this.programs.delete(key);
-        this.warmFailed = true;
-      }
+      this.tryWarm(program);
     }
     this.warmed = true;
     // Redraw the cached clouds so the full cloud build's first draw lands in the same stall.
     this.cloudKey = "";
+  }
+
+  private tryWarm(program: Program) {
+    try {
+      program.check();
+    } catch {
+      // An effect off screen mustn't stop the painting: drop the build, keep the lean variants.
+      for (const [key, p] of this.programs) {
+        if (p !== program) continue;
+        this.programs.delete(key);
+        this.failed.add(key);
+      }
+      this.warmFailed = true;
+    }
   }
 
   /** Compiles one unused build at a time after startup, so a later switch doesn't stall. */
@@ -1281,6 +1295,7 @@ export class PondRenderer {
       this.warming &&
       !this.gl.getProgramParameter(this.warming.program, this.parallel.COMPLETION_STATUS_KHR)
     ) return;
+    if (this.warming) this.tryWarm(this.warming);
     const builds = this.warmBuilds();
     const count = this.programs.size;
     for (const build of builds) {

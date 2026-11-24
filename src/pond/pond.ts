@@ -466,18 +466,31 @@ function fromWall(year: number, month: number, day: number, minutes: number, pre
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
+function closeArt(views: ViewArt[]) {
+  for (const v of views) {
+    for (const image of [v.land, v.depth, v.foreground, v.foliage]) image?.close();
+  }
+}
+
 async function loadArt(assets: PondAssets, signal: AbortSignal | undefined) {
   const fetched = async (url: string) => {
     const response = await fetch(url, { signal });
     if (!response.ok) throw new Error(`HTTP ${response.status} for ${url}`);
     return response;
   };
-  // Keeps depth greys exact.
-  const bitmap = async (url: string) =>
-    createImageBitmap(await (await fetched(url)).blob(), {
+  const made: ImageBitmap[] = [];
+  let failed = false;
+  const bitmap = async (url: string) => {
+    // Keeps depth greys exact.
+    const image = await createImageBitmap(await (await fetched(url)).blob(), {
       premultiplyAlpha: "none",
       colorSpaceConversion: "none",
     });
+    // Decodes still in flight when a sibling fails land after the cleanup below.
+    if (failed) image.close();
+    else made.push(image);
+    return image;
+  };
   const bytes = async (url: string) => new Uint8Array(await (await fetched(url)).arrayBuffer());
   const [views, starBytes, milkyBytes] = await Promise.all([
     Promise.all(assets.views.map(async (v): Promise<ViewArt> => {
@@ -495,7 +508,11 @@ async function loadArt(assets: PondAssets, signal: AbortSignal | undefined) {
     })),
     bytes(assets.stars),
     bytes(assets.milkyWay),
-  ]);
+  ]).catch((error) => {
+    failed = true;
+    for (const image of made) image.close();
+    throw error;
+  });
   if (views.length === 0) throw new Error("No views: add views/<name>/land.png and rebuild");
   return { views, stars: decodeStars(starBytes), milkyWay: decodeMilkyWay(milkyBytes) };
 }
@@ -524,13 +541,14 @@ export async function mountPond(
     if (owners.get(canvas) === owner) owners.delete(canvas);
   };
   signal?.addEventListener("abort", disown);
-  let art: Awaited<ReturnType<typeof loadArt>>, renderer: PondRenderer, started = false;
+  let art: Awaited<ReturnType<typeof loadArt>> | undefined, renderer: PondRenderer, started = false;
   try {
     art = await loadArt(assets, signal);
     signal?.throwIfAborted();
     started = true;
     renderer = new PondRenderer(canvas, art.views[0], art.milkyWay);
   } catch (error) {
+    if (art) closeArt(art.views);
     if (started) {
       spent.add(canvas);
       canvas.getContext("webgl2")?.getExtension("WEBGL_lose_context")?.loseContext();
@@ -616,6 +634,8 @@ export async function mountPond(
     showClock();
   }
   function showView() {
+    // The paintings are closed on destroy.
+    if (destroyed) return;
     view = views.find((v) => v.name === settings.view) ?? views[0];
     renderer.setView(view);
     frameView();
@@ -1146,9 +1166,8 @@ export async function mountPond(
       mistRise = (mistRise + dt * 0.15) % 1;
       const cells = stormCells(stormDrift, stormAge, settings.storms / 100, 90, baseKm);
       storms = { live: Lightning.live(cells).length, near: cells.length };
-      lightning.update(dt, cells, strikeNow);
+      if (lightning.update(dt, cells, strikeNow)) strikeNow = false;
       tilt.update(dt);
-      strikeNow = false;
       pawDrift[0] = (((pawDrift[0] - w * dt) % WIND_WRAP_M) + WIND_WRAP_M) % WIND_WRAP_M;
       pawDrift[1] = (((pawDrift[1] - s * dt) % WIND_WRAP_M) + WIND_WRAP_M) % WIND_WRAP_M;
       const speed = Math.hypot(w, s), wave = speed > 0 ? WAVE_SPEED * dt / speed : 0;
@@ -1163,7 +1182,7 @@ export async function mountPond(
       const start = performance.now();
       // Shaders compile on first use, so a link failure surfaces here.
       try {
-        draw(elapsed / 1000, baseKm);
+        draw(dt, baseKm);
       } catch (error) {
         // A context lost mid-link fails the status check; webglcontextrestored recovers it.
         if (renderer.contextLost) lost = true;
@@ -1209,6 +1228,7 @@ export async function mountPond(
     canvas.removeEventListener("webglcontextrestored", contextRestored);
     tilt.disable();
     renderer.release();
+    closeArt(views);
     disown();
   }
   function fatal(error: unknown) {
@@ -1225,7 +1245,10 @@ export async function mountPond(
     set(patch) {
       const shown = settings.view;
       for (const key of Object.keys(patch) as (keyof PondSettings)[]) {
-        (settings as Record<keyof PondSettings, unknown>)[key] = patch[key];
+        const range = RANGES[key], value = patch[key];
+        (settings as Record<keyof PondSettings, unknown>)[key] = range
+          ? Math.min(range.max, Math.max(range.min, value as number))
+          : value;
       }
       if (settings.view !== shown) showView();
       if ("tilt" in patch && !settings.tilt) tilt.disable();

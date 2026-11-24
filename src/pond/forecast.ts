@@ -180,6 +180,16 @@ export function forecast(ms: number, seed: number, out: Forecast): Forecast {
     rainRate += peakRate * intensity * envelope(age, 0, 0.08, duration);
   }
 
+  // Adapted from KELPII's nextFront: the first wet day within 60 days.
+  for (let k = 2; k <= 61 && hoursToFront === Infinity; k++) {
+    const id = mod(today + k, DAYS), sample = id + 0.5;
+    const m = leftMonth(sample), blend = monthFrac(sample, m), roll = random(seed, id, 1);
+    if (roll >= dailyOdds(CHATHAM.wet, m, blend)) continue;
+    const timing = random(seed, id, 2);
+    const start = roll < dailyOdds(CHATHAM.thunder, m, blend) ? 15 + 3 * timing : 24 * timing;
+    hoursToFront = 24 * k + start - 10 - hour;
+  }
+
   const fogOffset = hour >= 21 ? 1 : 0;
   const fogDay = mod(today + fogOffset, DAYS);
   const fogMonth = leftMonth(fogDay + 0.5), fogBlend = monthFrac(fogDay + 0.5, fogMonth);

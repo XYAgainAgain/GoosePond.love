@@ -112,6 +112,7 @@ export class Lightning {
     this.strike = null;
   }
 
+  /** False while a strike is in progress, so a forced one can wait for it. */
   update(dt: number, cells: StormCell[], force: boolean) {
     this.since += dt;
     this.dt = dt;
@@ -120,12 +121,13 @@ export class Lightning {
     this.wait -= dt;
     const busy = this.strike !== null &&
       this.strike.t < this.strike.strokes[this.strike.strokes.length - 1] + 0.2;
-    if (busy || (!force && (live.length === 0 || this.wait > 0))) return;
+    if (busy) return false;
+    if (!force && (live.length === 0 || this.wait > 0)) return true;
     const pool = live.length > 0 ? live : force ? cells : [];
     const weight = pool.map((c) => 1 / (400 + c.x * c.x + c.z * c.z));
     let pick = Math.random() * weight.reduce((a, b) => a + b, 0);
     const cell = pool.find((_, i) => (pick -= weight[i]) <= 0) ?? null;
-    if (!cell) return;
+    if (!cell) return true;
     this.wait = Math.random() < 0.3
       ? 0.3 + Math.random() * 0.9
       : (6 + Math.random() * 14) / Math.sqrt(Math.max(1, live.length));
@@ -145,6 +147,7 @@ export class Lightning {
       strokes: strokes(ground),
       wash,
     };
+    return true;
   }
 
   frame(p: Projection): Flash {
